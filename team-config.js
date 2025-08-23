@@ -1,5 +1,6 @@
 // Team configuration - Easy to edit without touching the main code
-const teamsConfig = {
+// This file MUST be loaded before app.js
+window.teamsConfig = {
   teamMappings: {
     trebge: "Maid'n Atletic",
     dabbenvanger: "Toasty Town",
@@ -19,14 +20,5 @@ const teamsConfig = {
     "Het Flevoslot",
     "NAC Breda 1912",
     "Rode Ster Nijmegen"
-  ],
-  settings: {
-    matchesPerTeam: 6,
-    includeBonusRound: true,
-    bonusSearchRange: 10,
-    scorePatterns: [
-      "(\\d+)\\s*-\\s*(\\d+)",  // Format: "2 - 1" or "2-1"
-      "(\\d+)\\s*:\\s*(\\d+)"   // Format: "2 : 1" or "2:1"
-    ]
-  }
+  ]
 };
