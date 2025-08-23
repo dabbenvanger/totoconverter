@@ -1,30 +1,38 @@
 // Toto VI.3 Converter - Complete standalone JavaScript application
 // This file contains all the logic for the converter tool
 
-// Configuration will be loaded from teams-config.js
-let teamMapping = {};
-let teamOrder = [];
-let settings = {};
+// Team mapping - maps forum usernames to team names
+const teamMapping = {
+    trebge: "Maid'n Atletic",
+    dabbenvanger: "Toasty Town",
+    prettyparacetamol: "You Will Never Find Brian Here",
+    blow_your_mind: "NAC Breda 1912",
+    bokkie2: "Rode Ster Nijmegen",  // NEW TEAM ADDED
+    vinz_clortho: "Keymasters",
+    soestvb: "Het Flevoslot",
+    robinkor: "Walburg"
+};
 
-// Initialize configuration
-if (typeof teamsConfig !== 'undefined') {
-    teamMapping = teamsConfig.teamMappings;
-    teamOrder = teamsConfig.teamOrder;
-    settings = teamsConfig.settings;
-} else {
-    console.error('Configuration file not loaded! Please ensure teams-config.js is included.');
-}
+// Team order for display - determines the order in the output table
+const teamOrder = [
+    "Maid'n Atletic",
+    "Keymasters",
+    "Walburg",
+    "Toasty Town",
+    "You Will Never Find Brian Here",
+    "Het Flevoslot",
+    "NAC Breda 1912",
+    "Rode Ster Nijmegen"  // NEW TEAM ADDED as 8th position
+];
 
 // Initialize the application
 let inputText = '';
 let convertedData = [];
 let isCopied = false;
-let parseErrors = [];
 
 // Function to find bonus answer after match 6
 function findBonusAnswer(lines, startIndex) {
-    const searchRange = settings.bonusSearchRange || 10;
-    for (let i = startIndex; i < Math.min(startIndex + searchRange, lines.length); i++) {
+    for (let i = startIndex; i < Math.min(startIndex + 10, lines.length); i++) {
         const line = lines[i].trim();
         if (!line) continue;
         
@@ -53,10 +61,6 @@ function findBonusAnswer(lines, startIndex) {
 // Function to convert the input data
 function convertData() {
     const tableData = [];
-    parseErrors = [];
-    const matchesPerTeam = settings.matchesPerTeam || 6;
-    const includeBonusRound = settings.includeBonusRound !== false;
-    const totalRowsPerTeam = includeBonusRound ? matchesPerTeam + 1 : matchesPerTeam;
     
     // Initialize table with empty rows for each team
     teamOrder.forEach((teamName, index) => {
@@ -65,11 +69,11 @@ function convertData() {
             tableData.push(["", "", "", ""]);
         }
         
-        // Add rows for each team (matches + optional bonus)
-        for (let matchNum = 0; matchNum < totalRowsPerTeam; matchNum++) {
+        // Add 7 rows for each team (6 matches + 1 bonus)
+        for (let matchNum = 0; matchNum < 7; matchNum++) {
             tableData.push([
                 teamName,
-                matchNum === matchesPerTeam ? "BONUS" : `Match ${matchNum + 1}`,
+                matchNum === 6 ? "BONUS" : `Match ${matchNum + 1}`,
                 "",
                 ""
             ]);
@@ -82,14 +86,12 @@ function convertData() {
         "i"
     );
     
-    // Create score pattern from settings or use default
-    const scorePatterns = settings.scorePatterns || ["(\\d+)\\s*-\\s*(\\d+)"];
-    const scorePattern = new RegExp(scorePatterns.join("|"), "g");
+    // Pattern to match scores like "2 - 1" or "3-0"
+    const scorePattern = /(\d+)\s*-\s*(\d+)/g;
     
     let currentUsername = "";
     let matchCount = 0;
     const lines = inputText.split("\n");
-    const foundTeams = new Set();
     
     for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
         const line = lines[lineIndex];
@@ -99,7 +101,6 @@ function convertData() {
         if (usernameMatch) {
             currentUsername = usernameMatch[0].toLowerCase();
             matchCount = 0;
-            foundTeams.add(teamMapping[currentUsername]);
             continue;
         }
         
@@ -108,24 +109,14 @@ function convertData() {
             const scores = line.match(scorePattern);
             if (scores) {
                 const [fullMatch] = scores;
-                // Try to extract scores with both patterns
-                let homeScore, awayScore;
-                
-                // Try dash separator
-                if (fullMatch.includes("-")) {
-                    [homeScore, awayScore] = fullMatch.split("-").map(s => s.trim());
-                }
-                // Try colon separator
-                else if (fullMatch.includes(":")) {
-                    [homeScore, awayScore] = fullMatch.split(":").map(s => s.trim());
-                }
+                const [homeScore, awayScore] = fullMatch.split("-").map(s => s.trim());
                 
                 const teamName = teamMapping[currentUsername];
                 const teamIndex = teamOrder.indexOf(teamName);
                 
-                if (teamIndex !== -1 && matchCount < matchesPerTeam) {
+                if (teamIndex !== -1 && matchCount < 6) {
                     // Calculate row index (8 rows per team: 7 data rows + 1 separator)
-                    const rowIndex = teamIndex * (totalRowsPerTeam + 1) + matchCount;
+                    const rowIndex = teamIndex * 8 + matchCount;
                     
                     // Update the scores
                     tableData[rowIndex][2] = homeScore;
@@ -133,14 +124,12 @@ function convertData() {
                     
                     matchCount++;
                     
-                    // After last match, look for bonus answer if enabled
-                    if (matchCount === matchesPerTeam) {
-                        if (includeBonusRound) {
-                            const bonusAnswer = findBonusAnswer(lines, lineIndex + 1);
-                            if (bonusAnswer) {
-                                const bonusRowIndex = teamIndex * (totalRowsPerTeam + 1) + matchesPerTeam;
-                                tableData[bonusRowIndex][2] = bonusAnswer;
-                            }
+                    // After 6th match, look for bonus answer
+                    if (matchCount === 6) {
+                        const bonusAnswer = findBonusAnswer(lines, lineIndex + 1);
+                        if (bonusAnswer) {
+                            const bonusRowIndex = teamIndex * 8 + 6;
+                            tableData[bonusRowIndex][2] = bonusAnswer;
                         }
                         
                         // Reset for next team
@@ -151,21 +140,6 @@ function convertData() {
             }
         }
     }
-    
-    // Check for missing data
-    teamOrder.forEach((teamName, teamIndex) => {
-        if (!foundTeams.has(teamName)) {
-            parseErrors.push(`⚠️ Team "${teamName}" not found in input data`);
-        } else {
-            // Check for missing matches
-            for (let matchNum = 0; matchNum < matchesPerTeam; matchNum++) {
-                const rowIndex = teamIndex * (totalRowsPerTeam + 1) + matchNum;
-                if (!tableData[rowIndex][2] || !tableData[rowIndex][3]) {
-                    parseErrors.push(`⚠️ ${teamName}: Missing data for Match ${matchNum + 1}`);
-                }
-            }
-        }
-    });
     
     convertedData = tableData;
     renderTable();
@@ -215,22 +189,8 @@ function renderTable() {
         return;
     }
     
-    // Build error messages HTML if any
-    let errorHTML = '';
-    if (parseErrors.length > 0) {
-        errorHTML = `
-            <div class="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <h3 class="text-sm font-semibold text-yellow-800 mb-2">Data Validation Issues:</h3>
-                <ul class="text-sm text-yellow-700 space-y-1">
-                    ${parseErrors.map(error => `<li>${error}</li>`).join('')}
-                </ul>
-            </div>
-        `;
-    }
-    
     let tableHTML = `
         <div class="mt-6">
-            ${errorHTML}
             <div class="flex justify-between items-center mb-2">
                 <h2 class="text-lg font-semibold text-gray-800">Converted Data:</h2>
                 <button id="copyBtn" onclick="copyToClipboard()" class="px-4 py-2 rounded-lg flex items-center gap-2 transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200">
@@ -256,13 +216,11 @@ function renderTable() {
     
     convertedData.forEach((row, index) => {
         const isEmpty = row[0] === "";
-        const isMissingData = !isEmpty && row[1] !== "BONUS" && (!row[2] || !row[3]);
         const rowClass = isEmpty ? 'h-4' : (index % 2 === 0 ? 'bg-gray-50' : 'bg-white');
-        const cellClass = isMissingData ? 'text-orange-600' : 'text-gray-500';
         
         tableHTML += `<tr class="${rowClass}">`;
         row.forEach(cell => {
-            tableHTML += `<td class="px-6 py-4 whitespace-nowrap text-sm ${cellClass} border-b">${cell || '-'}</td>`;
+            tableHTML += `<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 border-b">${cell}</td>`;
         });
         tableHTML += `</tr>`;
     });
