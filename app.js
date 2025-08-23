@@ -1,29 +1,21 @@
 // Toto VI.3 Converter - Complete standalone JavaScript application
-// Configuration section - Easy to edit
-const config = {
-    teamMappings: {
-        trebge: "Maid'n Atletic",
-        dabbenvanger: "Toasty Town",
-        prettyparacetamol: "You Will Never Find Brian Here",
-        blow_your_mind: "NAC Breda 1912",
-        bokkie2: "Rode Ster Nijmegen",
-        vinz_clortho: "Keymasters",
-        soestvb: "Het Flevoslot",
-        robinkor: "Walburg"
-    },
-    teamOrder: [
-        "Maid'n Atletic",
-        "Keymasters",
-        "Walburg",
-        "Toasty Town",
-        "You Will Never Find Brian Here",
-        "Het Flevoslot",
-        "NAC Breda 1912",
-        "Rode Ster Nijmegen"
-    ]
-};
+// This file contains all the logic for the converter tool
 
-// Application state
+// Configuration will be loaded from teams-config.js
+let teamMapping = {};
+let teamOrder = [];
+let settings = {};
+
+// Initialize configuration
+if (typeof teamsConfig !== 'undefined') {
+    teamMapping = teamsConfig.teamMappings;
+    teamOrder = teamsConfig.teamOrder;
+    settings = teamsConfig.settings;
+} else {
+    console.error('Configuration file not loaded! Please ensure teams-config.js is included.');
+}
+
+// Initialize the application
 let inputText = '';
 let convertedData = [];
 let isCopied = false;
@@ -31,7 +23,8 @@ let parseErrors = [];
 
 // Function to find bonus answer after match 6
 function findBonusAnswer(lines, startIndex) {
-    for (let i = startIndex; i < Math.min(startIndex + 10, lines.length); i++) {
+    const searchRange = settings.bonusSearchRange || 10;
+    for (let i = startIndex; i < Math.min(startIndex + searchRange, lines.length); i++) {
         const line = lines[i].trim();
         if (!line) continue;
         
@@ -61,19 +54,22 @@ function findBonusAnswer(lines, startIndex) {
 function convertData() {
     const tableData = [];
     parseErrors = [];
+    const matchesPerTeam = settings.matchesPerTeam || 6;
+    const includeBonusRound = settings.includeBonusRound !== false;
+    const totalRowsPerTeam = includeBonusRound ? matchesPerTeam + 1 : matchesPerTeam;
     
     // Initialize table with empty rows for each team
-    config.teamOrder.forEach((teamName, index) => {
+    teamOrder.forEach((teamName, index) => {
         // Add separator row between teams (except for the first team)
         if (index > 0) {
             tableData.push(["", "", "", ""]);
         }
         
-        // Add 7 rows for each team (6 matches + 1 bonus)
-        for (let matchNum = 0; matchNum < 7; matchNum++) {
+        // Add rows for each team (matches + optional bonus)
+        for (let matchNum = 0; matchNum < totalRowsPerTeam; matchNum++) {
             tableData.push([
                 teamName,
-                matchNum === 6 ? "BONUS" : `Match ${matchNum + 1}`,
+                matchNum === matchesPerTeam ? "BONUS" : `Match ${matchNum + 1}`,
                 "",
                 ""
             ]);
@@ -82,12 +78,13 @@ function convertData() {
     
     // Create regex pattern from all usernames (case-insensitive)
     const usernamePattern = new RegExp(
-        Object.keys(config.teamMappings).map(username => username.toLowerCase()).join("|"),
+        Object.keys(teamMapping).map(username => username.toLowerCase()).join("|"),
         "i"
     );
     
-    // Pattern to match scores like "2 - 1" or "3-0" or "2 : 1"
-    const scorePattern = /(\d+)\s*[-:]\s*(\d+)/g;
+    // Create score pattern from settings or use default
+    const scorePatterns = settings.scorePatterns || ["(\\d+)\\s*-\\s*(\\d+)"];
+    const scorePattern = new RegExp(scorePatterns.join("|"), "g");
     
     let currentUsername = "";
     let matchCount = 0;
@@ -102,7 +99,7 @@ function convertData() {
         if (usernameMatch) {
             currentUsername = usernameMatch[0].toLowerCase();
             matchCount = 0;
-            foundTeams.add(config.teamMappings[currentUsername]);
+            foundTeams.add(teamMapping[currentUsername]);
             continue;
         }
         
@@ -111,17 +108,24 @@ function convertData() {
             const scores = line.match(scorePattern);
             if (scores) {
                 const [fullMatch] = scores;
-                // Extract scores (works with both - and : separators)
-                const parts = fullMatch.split(/[-:]/);
-                const homeScore = parts[0].trim();
-                const awayScore = parts[1].trim();
+                // Try to extract scores with both patterns
+                let homeScore, awayScore;
                 
-                const teamName = config.teamMappings[currentUsername];
-                const teamIndex = config.teamOrder.indexOf(teamName);
+                // Try dash separator
+                if (fullMatch.includes("-")) {
+                    [homeScore, awayScore] = fullMatch.split("-").map(s => s.trim());
+                }
+                // Try colon separator
+                else if (fullMatch.includes(":")) {
+                    [homeScore, awayScore] = fullMatch.split(":").map(s => s.trim());
+                }
                 
-                if (teamIndex !== -1 && matchCount < 6) {
+                const teamName = teamMapping[currentUsername];
+                const teamIndex = teamOrder.indexOf(teamName);
+                
+                if (teamIndex !== -1 && matchCount < matchesPerTeam) {
                     // Calculate row index (8 rows per team: 7 data rows + 1 separator)
-                    const rowIndex = teamIndex * 8 + matchCount;
+                    const rowIndex = teamIndex * (totalRowsPerTeam + 1) + matchCount;
                     
                     // Update the scores
                     tableData[rowIndex][2] = homeScore;
@@ -129,12 +133,14 @@ function convertData() {
                     
                     matchCount++;
                     
-                    // After 6th match, look for bonus answer
-                    if (matchCount === 6) {
-                        const bonusAnswer = findBonusAnswer(lines, lineIndex + 1);
-                        if (bonusAnswer) {
-                            const bonusRowIndex = teamIndex * 8 + 6;
-                            tableData[bonusRowIndex][2] = bonusAnswer;
+                    // After last match, look for bonus answer if enabled
+                    if (matchCount === matchesPerTeam) {
+                        if (includeBonusRound) {
+                            const bonusAnswer = findBonusAnswer(lines, lineIndex + 1);
+                            if (bonusAnswer) {
+                                const bonusRowIndex = teamIndex * (totalRowsPerTeam + 1) + matchesPerTeam;
+                                tableData[bonusRowIndex][2] = bonusAnswer;
+                            }
                         }
                         
                         // Reset for next team
@@ -147,13 +153,13 @@ function convertData() {
     }
     
     // Check for missing data
-    config.teamOrder.forEach((teamName, teamIndex) => {
+    teamOrder.forEach((teamName, teamIndex) => {
         if (!foundTeams.has(teamName)) {
             parseErrors.push(`⚠️ Team "${teamName}" not found in input data`);
         } else {
             // Check for missing matches
-            for (let matchNum = 0; matchNum < 6; matchNum++) {
-                const rowIndex = teamIndex * 8 + matchNum;
+            for (let matchNum = 0; matchNum < matchesPerTeam; matchNum++) {
+                const rowIndex = teamIndex * (totalRowsPerTeam + 1) + matchNum;
                 if (!tableData[rowIndex][2] || !tableData[rowIndex][3]) {
                     parseErrors.push(`⚠️ ${teamName}: Missing data for Match ${matchNum + 1}`);
                 }
@@ -255,9 +261,8 @@ function renderTable() {
         const cellClass = isMissingData ? 'text-orange-600' : 'text-gray-500';
         
         tableHTML += `<tr class="${rowClass}">`;
-        row.forEach((cell, cellIndex) => {
-            const displayValue = cell || (cellIndex > 1 && !isEmpty ? '-' : '');
-            tableHTML += `<td class="px-6 py-4 whitespace-nowrap text-sm ${cellClass} border-b">${displayValue}</td>`;
+        row.forEach(cell => {
+            tableHTML += `<td class="px-6 py-4 whitespace-nowrap text-sm ${cellClass} border-b">${cell || '-'}</td>`;
         });
         tableHTML += `</tr>`;
     });
