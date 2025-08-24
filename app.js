@@ -20,6 +20,7 @@ let inputText = '';
 let convertedData = [];
 let isCopied = false;
 let parseErrors = [];
+let infoMessages = [];
 let isHelpVisible = false;
 
 // Function to toggle help visibility
@@ -74,6 +75,7 @@ function findBonusAnswer(lines, startIndex) {
 function convertData() {
     const tableData = [];
     parseErrors = [];
+    infoMessages = [];
     const matchesPerTeam = settings.matchesPerTeam || 6;
     const includeBonusRound = settings.includeBonusRound !== false;
     const totalRowsPerTeam = includeBonusRound ? matchesPerTeam + 1 : matchesPerTeam;
@@ -175,13 +177,24 @@ function convertData() {
     // Check for missing data
     teamOrder.forEach((teamName, teamIndex) => {
         if (!foundTeams.has(teamName)) {
-            parseErrors.push(`⚠️ Team "${teamName}" not found in input data`);
+            infoMessages.push(`ℹ️ Team "${teamName}" not found in input data`);
         } else {
             // Check for missing matches
+            let hasMatchData = false;
             for (let matchNum = 0; matchNum < matchesPerTeam; matchNum++) {
                 const rowIndex = teamIndex * (totalRowsPerTeam + 1) + matchNum;
                 if (!tableData[rowIndex][2] || !tableData[rowIndex][3]) {
                     parseErrors.push(`⚠️ ${teamName}: Missing data for Match ${matchNum + 1}`);
+                } else {
+                    hasMatchData = true;
+                }
+            }
+            
+            // Check for missing bonus answer if team has match data and bonus is enabled
+            if (hasMatchData && includeBonusRound) {
+                const bonusRowIndex = teamIndex * (totalRowsPerTeam + 1) + matchesPerTeam;
+                if (!tableData[bonusRowIndex][2]) {
+                    parseErrors.push(`⚠️ ${teamName}: Missing bonus answer`);
                 }
             }
         }
@@ -237,12 +250,38 @@ function renderTable() {
     
     // Build error messages HTML if any
     let errorHTML = '';
+    
+    // Warning messages (more important)
     if (parseErrors.length > 0) {
-        errorHTML = `
-            <div class="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <h3 class="text-sm font-semibold text-yellow-800 mb-2">Data Validation Issues:</h3>
-                <ul class="text-sm text-yellow-700 space-y-1">
+        errorHTML += `
+            <div class="mb-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                <h3 class="text-sm font-semibold text-orange-800 mb-2 flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.664-.833-2.464 0L4.732 18.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                    </svg>
+                    Warnings:
+                </h3>
+                <ul class="text-sm text-orange-700 space-y-1">
                     ${parseErrors.map(error => `<li>${error}</li>`).join('')}
+                </ul>
+            </div>
+        `;
+    }
+    
+    // Info messages (less important)
+    if (infoMessages.length > 0) {
+        errorHTML += `
+            <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h3 class="text-sm font-semibold text-blue-800 mb-2 flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M12 16v-4"></path>
+                        <path d="M12 8h.01"></path>
+                    </svg>
+                    Information:
+                </h3>
+                <ul class="text-sm text-blue-700 space-y-1">
+                    ${infoMessages.map(message => `<li>${message}</li>`).join('')}
                 </ul>
             </div>
         `;
