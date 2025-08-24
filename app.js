@@ -336,7 +336,7 @@ function renderApp() {
                         
                         <div id="helpSection" class="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-lg" style="display: none;">
                             <p class="text-sm text-gray-600">
-                                Select all text from the forum entries related to the active speelronde. Copy and paste the text in the box below and click the button to convert the text to table format.
+                                Select all text from the forum entries related to the active <em>speelronde</em>. Copy and paste the text in the box below and click the button to convert the text to table format.
                             </p>
                         </div>
                         
