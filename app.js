@@ -20,6 +20,26 @@ let inputText = '';
 let convertedData = [];
 let isCopied = false;
 let parseErrors = [];
+let isHelpVisible = false;
+
+// Function to toggle help visibility
+function toggleHelp() {
+    isHelpVisible = !isHelpVisible;
+    renderHelpSection();
+}
+
+// Function to render help section
+function renderHelpSection() {
+    const helpSection = document.getElementById('helpSection');
+    const helpIcon = document.getElementById('helpIcon');
+    
+    if (helpSection && helpIcon) {
+        helpSection.style.display = isHelpVisible ? 'block' : 'none';
+        
+        // Rotate the help icon when expanded
+        helpIcon.style.transform = isHelpVisible ? 'rotate(180deg)' : 'rotate(0deg)';
+    }
+}
 
 // Function to find bonus answer after match 6
 function findBonusAnswer(lines, startIndex) {
@@ -199,7 +219,7 @@ function renderCopyButton() {
         copyBtn.innerHTML = `
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect>
-                <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                <path d="M4 16c-1.1 0-2-.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
             </svg>
             ${isCopied ? 'Copied!' : 'Copy to Clipboard'}
         `;
@@ -296,9 +316,30 @@ function renderApp() {
                     </h1>
                     
                     <div class="mb-6">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            Select all text from the forum entries related to the active speelronde. Copy and paste the text in the box below and click the button to convert the text to table format.
-                        </label>
+                        <div class="flex items-center gap-2 mb-2">
+                            <label class="block text-sm font-medium text-gray-700">
+                                Forum Data Input
+                            </label>
+                            <button 
+                                id="helpButton" 
+                                onclick="toggleHelp()" 
+                                class="p-1 text-gray-400 hover:text-gray-600 transition-colors rounded-full hover:bg-gray-100"
+                                title="Help"
+                            >
+                                <svg id="helpIcon" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                                    <path d="M12 17h.01"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        
+                        <div id="helpSection" class="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg" style="display: none;">
+                            <p class="text-sm text-blue-700">
+                                Select all text from the forum entries related to the active speelronde. Copy and paste the text in the box below and click the button to convert the text to table format.
+                            </p>
+                        </div>
+                        
                         <textarea 
                             id="inputTextarea"
                             class="w-full h-64 px-3 py-2 text-gray-700 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
