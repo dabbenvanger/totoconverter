@@ -297,7 +297,7 @@ function renderApp() {
                     
                     <div class="mb-6">
                         <label class="block text-sm font-medium text-gray-700 mb-2">
-                            Paste forum data here:
+                            Select all text from the forum entries related to the active round. Copy and paste the text in the box below and click the button to convert the text to table format.
                         </label>
                         <textarea 
                             id="inputTextarea"
