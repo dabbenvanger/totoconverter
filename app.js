@@ -334,8 +334,8 @@ function renderApp() {
                             </button>
                         </div>
                         
-                        <div id="helpSection" class="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg" style="display: none;">
-                            <p class="text-sm text-blue-700">
+                        <div id="helpSection" class="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-lg" style="display: none;">
+                            <p class="text-sm text-gray-600">
                                 Select all text from the forum entries related to the active speelronde. Copy and paste the text in the box below and click the button to convert the text to table format.
                             </p>
                         </div>
