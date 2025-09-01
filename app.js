@@ -52,18 +52,27 @@ function findBonusAnswer(lines, startIndex) {
         const cleanLine = line.replace("[/quote]", "").trim();
         
         // Check if this line contains the bonus question
-        if (cleanLine.toLowerCase().includes("bonus") && cleanLine.includes("?")) {
-            // Try to find answer right after the question mark
-            const parts = cleanLine.split("?");
-            if (parts.length > 1 && parts[1].trim()) {
-                return parts[1].trim();
+        if (cleanLine.toLowerCase().includes("bonus")) {
+            // First try to find answer after question mark
+            if (cleanLine.includes("?")) {
+                const parts = cleanLine.split("?");
+                if (parts.length > 1 && parts[1].trim()) {
+                    return parts[1].trim();
+                }
+                
+                // Otherwise look in the next few lines for the answer
+                for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
+                    const answerLine = lines[j].trim().replace("[/quote]", "").trim();
+                    if (answerLine && !answerLine.toLowerCase().includes("bonus")) {
+                        return answerLine;
+                    }
+                }
             }
-            
-            // Otherwise look in the next few lines for the answer
-            for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
-                const answerLine = lines[j].trim().replace("[/quote]", "").trim();
-                if (answerLine && !answerLine.toLowerCase().includes("bonus")) {
-                    return answerLine;
+            // If no question mark found, try to find answer after colon (:)
+            else if (cleanLine.includes(":")) {
+                const parts = cleanLine.split(":");
+                if (parts.length > 1 && parts[1].trim()) {
+                    return parts[1].trim();
                 }
             }
         }
